@@ -1,0 +1,9 @@
+Flask
+reportlab
+pdfrw
+gunicorn
+geopy
+requests
+firebase-admin
+telethon
+playwright
