@@ -294,21 +294,31 @@ def extrair_executantes_seguro(text, db):
 
     return exec_list
 
-
 def extrair_siglas_seguro(text):
+    # 1. Remove URLs e e-mails do texto para o robô não confundir "vivo.com" com siglas de rota
+    texto_limpo = re.sub(r'http[s]?://\S+', '', text, flags=re.IGNORECASE)
+
     padroes = [
         r"SIGLA(?:[ \t]+DO[ \t]+TRECHO)?[\s:;\-]+RESPOSTA[\s:;\-]+([A-Z]{3,4})\.([A-Z0-9]{2,3})",
         r"SIGLA[ \t\w]*[\s:;\-]+([A-Z]{3,4})\.([A-Z0-9]{2,3})",
         r"(?:ROTA[ \t\w]+CABO|CENTRAL)[\s:;\-]+([A-Z]{3,4})\.([A-Z0-9]{2,3})"
     ]
-    for padrao in padroes:
-        matches = re.findall(padrao, text, re.IGNORECASE)
-        if matches:
-            return matches[-1][0].upper(), matches[-1][1].upper()
 
-    m_loose = re.findall(r"\b([A-Z]{3,4})\.([A-Z0-9]{2,3})\b", text, re.IGNORECASE)
+    for padrao in padroes:
+        matches = re.findall(padrao, texto_limpo, re.IGNORECASE)
+        if matches:
+            # Pega a última correspondência, mas garante que não é um falso positivo
+            for m in reversed(matches):
+                if m[0].upper() != "VIVO" and m[1].upper() != "COM":
+                    return m[0].upper(), m[1].upper()
+
+    m_loose = re.findall(r"\b([A-Z]{3,4})\.([A-Z0-9]{2,3})\b", texto_limpo, re.IGNORECASE)
     if m_loose:
-        return m_loose[-1][0].upper(), m_loose[-1][1].upper()
+        # Pega a última correspondência livre ignorando o lixo da web
+        for m in reversed(m_loose):
+            if m[0].upper() != "VIVO" and m[1].upper() != "COM":
+                return m[0].upper(), m[1].upper()
+
     return "", ""
 
 
@@ -978,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <td style="border-left:none; text-align:center; width: 60px;"><form method="post" style="display:inline;"><input type="hidden" name="action" value="delete"><input type="hidden" name="nome" value="{{ nome }}"><button type="submit" class="btn btn-del view-data">Excluir</button></form></td></tr>
 {% endfor %}</tbody></table></div></div></body></html>"""
 
-PASTE_HTML = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Colar Relatório</title><style>body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;padding:20px;text-align:center;margin:0}.container{width:90%;max-width:700px;margin:20px auto;background:#fff;padding:25px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1)}textarea{width:100%;height:180px;padding:15px;margin-bottom:20px;border:2px solid #ddd;border-radius:8px;font-size:16px;font-family:monospace;resize:vertical;background-color:#fafafa;box-sizing:border-box}textarea:focus{border-color:#007bff;outline:none;background:#fff}button{width:100%;padding:15px;font-size:18px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;transition:0.2s;font-weight:bold;margin-bottom:15px}button:hover{background:#0056b3}h2{color:#333;margin-bottom:10px}.manual-link{display:inline-block;margin-top:15px;color:#666;text-decoration:none;font-size:14px; margin-right:15px;}.manual-link:hover{text-decoration:underline;color:#007bff}.info{color:#666;font-size:14px;margin-bottom:20px}</style></head><body><div class="container"><h2>Gerador de Croquis</h2><p class="info">Digite apenas o <strong>Número da TA</strong> para busca automática ou cole o encerramento do <strong>GENESIS</strong>.</p><form method="post" action="/preencher"><textarea name="raw_text" placeholder="Digite a TA (ex: 363384900) ou cole o texto aqui..."></textarea><br><button type="submit">Processar Relatório »</button></form><div><a href="/form" class="manual-link">Preencher manualmente</a> | <a href="/admin" class="manual-link" style="color:#28a745;">☁️ Sistema</a> | <a href="/mapa/" target="_blank" class="manual-link" style="color:#17a2b8;">🗺️ Localizações</a></div></div></body></html>"""
+PASTE_HTML = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Colar Relatório</title><style>body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;padding:20px;text-align:center;margin:0}.container{width:90%;max-width:700px;margin:20px auto;background:#fff;padding:25px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1)}textarea{width:100%;height:180px;padding:15px;margin-bottom:20px;border:2px solid #ddd;border-radius:8px;font-size:16px;font-family:monospace;resize:vertical;background-color:#fafafa;box-sizing:border-box}textarea:focus{border-color:#007bff;outline:none;background:#fff}button{width:100%;padding:15px;font-size:18px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;transition:0.2s;font-weight:bold;margin-bottom:15px}button:hover{background:#0056b3}h2{color:#333;margin-bottom:10px}.manual-link{display:inline-block;margin-top:15px;color:#666;text-decoration:none;font-size:14px; margin-right:15px;}.manual-link:hover{text-decoration:underline;color:#007bff}.info{color:#666;font-size:14px;margin-bottom:20px}</style></head><body><div class="container"><h2>Gerador de Croquis</h2><p class="info">Digite o <strong>Número da TA</strong> com o encerramento do <strong>GENESIS</strong>.</p><form method="post" action="/preencher"><textarea name="raw_text" placeholder="Cole aqui..."></textarea><br><button type="submit">Processar Relatório »</button></form><div><a href="/form" class="manual-link">Preencher manualmente</a> | <a href="/admin" class="manual-link" style="color:#28a745;">☁️ Sistema</a> | <a href="/mapa/" target="_blank" class="manual-link" style="color:#17a2b8;">🗺️ Localizações</a></div></div></body></html>"""
 
 FORM_HTML = r"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Confirmar Dados - Gerador de Croqui</title>
 <style>body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;padding:10px;margin:0} .container{width:95%;max-width:900px;margin:10px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05);box-sizing:border-box} input,textarea{width:100%;padding:12px;margin-bottom:15px;border:1px solid #ccc;border-radius:5px;font-size:16px;box-sizing:border-box} textarea{height:150px;font-family:monospace} button{padding:15px;font-size:16px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;color:#fff;width:100%;margin-bottom:10px} #btn-validate{background:#28a745} #btn-validate:hover{background:#218838} h3{margin-top:20px;border-bottom:2px solid #eee;padding-bottom:10px;color:#444;font-size:18px} label{font-weight:600;font-size:14px;color:#555;display:block;margin-bottom:5px} .error{border:2px solid #dc3545!important;background:#fff0f0} .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px} .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px} @media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr;gap:10px} .container{padding:15px;width:100%}} .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:none;justify-content:center;align-items:center} .modal-content{background:#fff;padding:25px;border-radius:12px;width:90%;max-width:400px;box-shadow:0 5px 15px rgba(0,0,0,0.3)} .modal-title{font-size:1.2rem;font-weight:bold;margin-bottom:15px;color:#dc3545} .modal-list{margin-bottom:20px;padding-left:20px;color:#333} .modal-actions{display:flex;flex-direction:column;gap:10px} #btn-modal-back{background:#6c757d} #btn-modal-proceed{background:#007bff} .tag{display:inline-block;background:#e9ecef;color:#333;padding:8px 14px;border-radius:20px;margin:4px;font-size:14px;border:1px solid #ddd} .tag span{margin-left:10px;cursor:pointer;color:#dc3545;font-weight:bold} #exec-list{max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:4px;margin-bottom:10px} #exec-list div{padding:12px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;justify-content:space-between} #exec-list div:hover{background:#f8f9fa;color:#007bff} .area-badge{color:#999;font-size:0.9em} .back-btn{background:#007bff;text-decoration:none;display:block;color:white;padding:15px;border-radius:5px;text-align:center;margin-bottom:10px;font-weight:bold}</style></head>
